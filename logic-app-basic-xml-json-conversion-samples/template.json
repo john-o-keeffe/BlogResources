@@ -1,0 +1,125 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "workflows_logic_order_processor_name": {
+            "defaultValue": "logic-order-processor",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Logic/workflows",
+            "apiVersion": "2017-07-01",
+            "name": "[parameters('workflows_logic_order_processor_name')]",
+            "location": "westeurope",
+            "properties": {
+                "state": "Enabled",
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "triggers": {
+                        "manual": {
+                            "type": "Request",
+                            "kind": "Http",
+                            "inputs": {
+                                "method": "POST"
+                            }
+                        }
+                    },
+                    "actions": {
+                        "Initialize_variable_Country": {
+                            "runAfter": {},
+                            "type": "InitializeVariable",
+                            "inputs": {
+                                "variables": [
+                                    {
+                                        "name": "Country",
+                                        "type": "string",
+                                        "value": "@{json(xml(triggerBody()))?['PurchaseOrder']?['Address'][0]?['Country']}"
+                                    }
+                                ]
+                            },
+                            "description": "json(xml(triggerBody()))?['PurchaseOrder']?['Address'][0]?['Country']"
+                        },
+                        "Switch": {
+                            "runAfter": {
+                                "Initialize_variable_Country": [
+                                    "Succeeded"
+                                ]
+                            },
+                            "cases": {
+                                "Case_Ireland": {
+                                    "case": "ireland",
+                                    "actions": {
+                                        "HTTP_Ireland": {
+                                            "runAfter": {},
+                                            "type": "Http",
+                                            "inputs": {
+                                                "body": "@triggerBody()",
+                                                "method": "POST",
+                                                "uri": "https://61a70d6fcf048ac83130637f22815a09.m.pipedream.net"
+                                            },
+                                            "operationOptions": "SuppressWorkflowHeaders"
+                                        },
+                                        "Response_200_Ireland": {
+                                            "runAfter": {
+                                                "HTTP_Ireland": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Response",
+                                            "kind": "Http",
+                                            "inputs": {
+                                                "body": "Order Sent",
+                                                "statusCode": 200
+                                            }
+                                        }
+                                    }
+                                },
+                                "Case_USA": {
+                                    "case": "usa",
+                                    "actions": {
+                                        "HTTP_USA": {
+                                            "runAfter": {},
+                                            "type": "Http",
+                                            "inputs": {
+                                                "body": "@triggerBody()",
+                                                "method": "POST",
+                                                "uri": "https://32bf611890b6abe5775da1d8a4c65be7.m.pipedream.net"
+                                            },
+                                            "operationOptions": "SuppressWorkflowHeaders"
+                                        },
+                                        "Response_200_USA": {
+                                            "runAfter": {
+                                                "HTTP_USA": [
+                                                    "Succeeded"
+                                                ]
+                                            },
+                                            "type": "Response",
+                                            "kind": "Http",
+                                            "inputs": {
+                                                "body": "Order Sent",
+                                                "statusCode": 200
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "default": {
+                                "actions": {}
+                            },
+                            "expression": "@tolower(json(xml(triggerBody()))?['PurchaseOrder']?['Address'][0]?['Country'])",
+                            "type": "Switch",
+                            "description": "tolower(json(xml(triggerBody()))?['PurchaseOrder']?['Address'][0]?['Country'])"
+                        }
+                    },
+                    "outputs": {}
+                },
+                "parameters": {}
+            }
+        }
+    ]
+}
